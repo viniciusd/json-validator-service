@@ -10,13 +10,15 @@ import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import model.SchemaHandler
 import model.SchemaHandler._
-import spray.json.DefaultJsonProtocol
+import spray.json.{DefaultJsonProtocol, JsValue}
 
 import scala.concurrent.ExecutionContextExecutor
+import scala.util.{Failure, Success}
 
 trait Protocols extends DefaultJsonProtocol {
   implicit val schemaValidatedFormat = jsonFormat3(SchemaValidated.apply)
   implicit val schemaUploadedFormat = jsonFormat3(SchemaUploaded.apply)
+  implicit val schemaNotUploadedFormat = jsonFormat4(SchemaNotUploaded.apply)
   implicit val schemaFormat = jsonFormat1(Schema.apply)
 }
 
@@ -51,8 +53,14 @@ trait Service extends Protocols {
   pathPrefix("schema") {
     path(Segment) { schemaId =>
       post {
-        complete {
-          (schemaHandler ? Upload(schemaId)).mapTo[SchemaUploaded]
+        entity(as[JsValue]) { json =>
+          onComplete(schemaHandler ? Upload(schemaId, json)) {
+            case Success(actorResponse) => actorResponse match {
+              case resp:SchemaUploaded => complete(resp)
+              case resp:SchemaNotUploaded => complete(resp)
+            }
+            case Failure(_) => complete(InternalServerError)
+          }
         }
       } ~
       get {
