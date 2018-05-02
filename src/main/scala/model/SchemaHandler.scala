@@ -15,7 +15,7 @@ object SchemaHandler {
   def config: Config = ConfigFactory.load()
   def system = ActorSystem("WriterSystem")
 
-  case class Validate(id: String)
+  case class Validate(id: String, json: JsValue)
   case class Upload(id: String, schema: JsValue)
   case class Get(id: String)
   case class SchemaValidated(action: String, id: String, status: String)
@@ -31,7 +31,7 @@ class SchemaHandler() extends Actor with ActorLogging {
     // closing over the sender in Future is not safe
     // I am keeping those references just in case for now
 
-    case Validate(id) =>
+    case Validate(id, json) =>
       val _sender = sender()
       _sender ! SchemaValidated("validateDocument", id, "success")
 

@@ -43,8 +43,10 @@ trait Service extends Protocols {
     pathPrefix("validate") {
       path(Segment) { schemaId =>
         post {
-          complete {
-            (schemaHandler ? Validate(schemaId)).mapTo[SchemaValidated]
+          entity(as[JsValue]) { json =>
+            complete {
+              (schemaHandler ? Validate(schemaId, json)).mapTo[SchemaValidated]
+            }
           }
         }
       }
