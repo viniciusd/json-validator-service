@@ -28,3 +28,4 @@ When building requests, be aware you must use the Content-Type application/json.
 * Add tests! As I was mostly starting to get along with Scala and Akka, I neglected this section
 * Create a service to keep it running without an attached terminal
 * Test some alternatives to schema storage (e.g., redis for cache, PSQL for storage...)
+* Consider alternatives for deployment, e.g., packaging into a jar file (sbt-assembly?)
