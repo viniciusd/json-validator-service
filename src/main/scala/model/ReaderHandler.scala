@@ -11,7 +11,6 @@ class ReaderHandler() extends Actor with ActorLogging {
 
   override def receive = {
     case str:String =>
-      // TODO: Distinguish not found from internal server error
       val path = Paths.get(str);
       val _sender = sender()
 
