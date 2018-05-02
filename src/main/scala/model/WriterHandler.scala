@@ -12,7 +12,6 @@ class WriterHandler(outFile: String) extends Actor with ActorLogging {
   val path = Paths.get(outFile);
 
   override def receive = {
-    // TODO: Do not accept if it is an invalid JSON
     case str:String =>
       val _sender = sender()
       Try(Files.write(path, str.getBytes(StandardCharsets.UTF_8))) match {
