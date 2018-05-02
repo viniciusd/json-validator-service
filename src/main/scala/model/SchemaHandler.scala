@@ -3,9 +3,10 @@ package model
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import com.github.fge.jsonschema.main.{JsonSchema, JsonSchemaFactory}
 import com.typesafe.config.{Config, ConfigFactory}
 import spray.json._
-
 
 import scala.concurrent.duration._
 import scala.util.{Try,Success,Failure}
@@ -33,7 +34,23 @@ class SchemaHandler() extends Actor with ActorLogging {
 
     case Validate(id, json) =>
       val _sender = sender()
-      _sender ! SchemaValidated("validateDocument", id, "success")
+      implicit val timeout: Timeout = Timeout(5 seconds)
+      (self ? Get(id)).map {
+		case resp:JsValue =>
+		  val objectMapper = new ObjectMapper
+		  val factory: JsonSchemaFactory = JsonSchemaFactory.byDefault()
+		  val schema: JsonSchema = factory.getJsonSchema(objectMapper.readTree(resp.toString))
+		  // TODO: Remove null attributes
+		  val jsonNode: JsonNode = objectMapper.readTree(json.toString)
+
+		  if(schema.validate(jsonNode).isSuccess()) {
+			_sender ! SchemaValidated("validateDocument", id, "success")
+		  } else {
+			// TODO: Implement the message attribute
+			_sender ! SchemaValidated("validateDocument", id, "error")
+		  }
+		case resp:SchemaNotFound => _sender ! SchemaValidated("validateDocument", id, "fail")
+      }
 
     case Upload(id, schema) =>
       val _sender = sender()
