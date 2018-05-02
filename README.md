@@ -21,6 +21,8 @@ Another important configuration is _schemas.storageDirectory_. For now, json-val
 
 For now, running _sbt run_ in its own screen session should be a better call to keep track of its output and avoid problems with sighup if it is running in a remote machine. Do not forget to increase _akka.loglevel_ when running on production. 
 
+When building requests, be aware you must use the Content-Type application/json. Also, take a look at [Httpie](https://github.com/jakubroztocil/httpie) for a user-friendly http client.
+
 ## TO-DOs:
 
 * Add tests! As I was mostly starting to get along with Scala and Akka, I neglected this section
