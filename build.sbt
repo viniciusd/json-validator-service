@@ -26,6 +26,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http" % akkaHttpV,
     "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpV,
     "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpV,
+    "com.github.java-json-tools" % "json-schema-validator" % "2.2.8",
+
     "org.scalatest" %% "scalatest" % scalaTestV % "test",
     "org.scalamock" %% "scalamock-scalatest-support" % "3.4.2"
   )
