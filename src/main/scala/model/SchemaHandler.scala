@@ -35,7 +35,6 @@ class SchemaHandler() extends Actor with ActorLogging {
 
   override def receive: Receive = {
     // closing over the sender in Future is not safe
-    // I am keeping those references just in case for now
 
     case Validate(id, json) =>
       val _sender = sender()
@@ -58,6 +57,8 @@ class SchemaHandler() extends Actor with ActorLogging {
 		  // It's temporarily here as a _make it work_ solution
 		  // Note that report.isSuccess() is an option, we would then
 		  // need to filter out the nulls before validating
+		  // Might try ehter manipulating the JsonNode again or 
+		  // de-/reserializing the object
 		  if(messages.length == 0) {
 			_sender ! SchemaValidationSuccess("validateDocument", id, "success")
 		  } else {
