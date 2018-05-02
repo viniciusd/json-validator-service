@@ -4,7 +4,8 @@ import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
-import spray.json.JsValue
+import spray.json._
+
 
 import scala.concurrent.duration._
 import scala.util.{Try,Success,Failure}
@@ -20,8 +21,7 @@ object SchemaHandler {
   case class SchemaValidated(action: String, id: String, status: String)
   case class SchemaUploaded(action: String, id: String, status: String)
   case class SchemaNotUploaded(action: String, id: String, status: String, message: String)
-  case class Schema(id: String)
-
+  case class SchemaNotFound(id: String)
 }
 
 class SchemaHandler() extends Actor with ActorLogging {
@@ -47,6 +47,12 @@ class SchemaHandler() extends Actor with ActorLogging {
 
     case Get(id) =>
       val _sender = sender()
-      _sender ! Schema(id)
+      val inputPath = config.getString("schemas.storageDirectory") + id
+      val reader = system.actorOf(Props(new ReaderHandler()))
+      implicit val timeout: Timeout = Timeout(5 seconds)
+      (reader ? inputPath).map {
+        case Success(schema:String) => _sender ! schema.parseJson
+        case Failure(_) => _sender ! SchemaNotFound(id)
+      }
   }
 }

@@ -2,7 +2,7 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.model.StatusCodes.{InternalServerError, NoContent, OK}
+import akka.http.scaladsl.model.StatusCodes.{InternalServerError, NotFound, OK}
 import akka.http.scaladsl.server.Directives._
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
@@ -19,7 +19,6 @@ trait Protocols extends DefaultJsonProtocol {
   implicit val schemaValidatedFormat = jsonFormat3(SchemaValidated.apply)
   implicit val schemaUploadedFormat = jsonFormat3(SchemaUploaded.apply)
   implicit val schemaNotUploadedFormat = jsonFormat4(SchemaNotUploaded.apply)
-  implicit val schemaFormat = jsonFormat1(Schema.apply)
 }
 
 trait Service extends Protocols {
@@ -64,10 +63,14 @@ trait Service extends Protocols {
         }
       } ~
       get {
-        complete {
-          (schemaHandler ? Get(schemaId)).mapTo[Schema]
+          onComplete(schemaHandler ? Get(schemaId)) {
+            case Success(actorResponse) => actorResponse match {
+              case resp:JsValue=> complete(resp)
+              case resp:SchemaNotFound=> complete(NotFound)
+            }
+            case Failure(_) => complete(InternalServerError)
+          }
         }
-      }
     }
   }
 }
