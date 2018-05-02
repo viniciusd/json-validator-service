@@ -31,6 +31,18 @@ object SchemaHandler {
 class SchemaHandler() extends Actor with ActorLogging {
   import SchemaHandler._
   implicit val ec = context.dispatcher
+
+  def removeNullNodes(tree: JsonNode): JsonNode = {
+	tree.asScala.map {
+	  case node =>
+		if (node.isObject || node.isArray) {
+		  removeNullNodes(node)
+		} else if (node.isNull) {
+		  tree.asInstanceOf[ObjectNode].remove(node)
+		}
+	}
+  }
+
   override def receive: Receive = {
     // closing over the sender in Future is not safe
     // I am keeping those references just in case for now
@@ -44,7 +56,8 @@ class SchemaHandler() extends Actor with ActorLogging {
 		  val factory: JsonSchemaFactory = JsonSchemaFactory.byDefault()
 		  val schema: JsonSchema = factory.getJsonSchema(objectMapper.readTree(resp.toString))
 		  // TODO: Remove null attributes
-		  val jsonNode: JsonNode = objectMapper.readTree(json.toString)
+		  val jsonNode: JsonNode = removeNullNodes(objectMapper.readTree(json.toString))
+		  removeNullNodes(jsonNode)
 
 		  val report = schema.validate(jsonNode)
 		  if(report.isSuccess()) {
