@@ -26,6 +26,7 @@ object SchemaHandler {
   case class SchemaUploaded(action: String, id: String, status: String)
   case class SchemaNotUploaded(action: String, id: String, status: String, message: String)
   case class SchemaNotFound(id: String)
+  case class FailedToReadSchema(id: String)
 }
 
 class SchemaHandler() extends Actor with ActorLogging {
@@ -63,6 +64,7 @@ class SchemaHandler() extends Actor with ActorLogging {
 			_sender ! SchemaValidationFailure("validateDocument", id, "error", messages)
 		  }
 		case resp:SchemaNotFound => _sender ! SchemaNotFound(id)
+		case resp:FailedToReadSchema => _sender ! SchemaNotFound(id)
       }
 
     case Upload(id, schema) =>
@@ -79,10 +81,15 @@ class SchemaHandler() extends Actor with ActorLogging {
       val _sender = sender()
       val inputPath = config.getString("schemas.storageDirectory") + id
       val reader = system.actorOf(Props(new ReaderHandler()))
-      implicit val timeout: Timeout = Timeout(5 seconds)
-      (reader ? inputPath).map {
-        case Success(schema:String) => _sender ! schema.parseJson
-        case Failure(_) => _sender ! SchemaNotFound(id)
-      }
+	  implicit val timeout: Timeout = Timeout(5 seconds)
+	  (reader ? inputPath).map {
+		case Success(schema:String) => _sender ! schema.parseJson
+		case Failure(msg) =>
+		  if (msg.getMessage == "Could not find schema") {
+			_sender ! SchemaNotFound(id)
+		  } else {
+			_sender ! FailedToReadSchema(id)
+		  }
+	  }
   }
 }

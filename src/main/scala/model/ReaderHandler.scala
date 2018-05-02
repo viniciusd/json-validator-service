@@ -14,9 +14,14 @@ class ReaderHandler() extends Actor with ActorLogging {
       // TODO: Distinguish not found from internal server error
       val path = Paths.get(str);
       val _sender = sender()
-      Try(Files.readAllBytes(path)) match {
-        case Success(bytes) => _sender ! Success(new String(bytes, StandardCharsets.UTF_8))
-        case Failure(_) => _sender ! Failure(new Exception("Could not write schema"))
-      }
+
+	  if (Files.exists(path) ) {
+		Try(Files.readAllBytes(path)) match {
+		  case Success(bytes) => _sender ! Success(new String(bytes, StandardCharsets.UTF_8))
+		  case Failure(_) => _sender ! Failure(new Exception("Could not write schema"))
+		}
+		} else {
+		  _sender ! Failure(new Exception("Could not find schema"))
+		}
   }
 }

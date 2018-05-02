@@ -49,7 +49,8 @@ trait Service extends Protocols {
 			  case Success(actorResponse) => actorResponse match {
 				case resp:SchemaValidationSuccess => complete(resp)
 				case resp:SchemaValidationFailure => complete(resp)
-				case resp:SchemaNotFound=> complete(NotFound)
+				case _:SchemaNotFound => complete(NotFound)
+				case _:FailedToReadSchema => complete(InternalServerError)
 			  }
 				case Failure(_) => complete(InternalServerError)
 			}
@@ -70,16 +71,17 @@ trait Service extends Protocols {
           }
         }
       } ~
-      get {
-          onComplete(schemaHandler ? Get(schemaId)) {
-            case Success(actorResponse) => actorResponse match {
-              case resp:JsValue=> complete(resp)
-              case resp:SchemaNotFound=> complete(NotFound)
-            }
-            case Failure(_) => complete(InternalServerError)
-          }
-        }
-    }
+	  get {
+		onComplete(schemaHandler ? Get(schemaId)) {
+		  case Success(actorResponse) => actorResponse match {
+			case resp:JsValue=> complete(resp)
+			case _:SchemaNotFound => complete(NotFound)
+			case _:FailedToReadSchema => complete(InternalServerError)
+		  }
+			case Failure(_) => complete(InternalServerError)
+		}
+	  }
+	}
   }
 }
 
