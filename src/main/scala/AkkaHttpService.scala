@@ -16,7 +16,8 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
 trait Protocols extends DefaultJsonProtocol {
-  implicit val schemaValidatedFormat = jsonFormat3(SchemaValidated.apply)
+  implicit val schemaValidationSuccessFormat = jsonFormat3(SchemaValidationSuccess.apply)
+  implicit val schemaValidationFailureFormat = jsonFormat4(SchemaValidationFailure.apply)
   implicit val schemaUploadedFormat = jsonFormat3(SchemaUploaded.apply)
   implicit val schemaNotUploadedFormat = jsonFormat4(SchemaNotUploaded.apply)
 }
@@ -44,11 +45,16 @@ trait Service extends Protocols {
       path(Segment) { schemaId =>
         post {
           entity(as[JsValue]) { json =>
-            complete {
-              (schemaHandler ? Validate(schemaId, json)).mapTo[SchemaValidated]
-            }
-          }
-        }
+			onComplete(schemaHandler ? Validate(schemaId, json)) {
+			  case Success(actorResponse) => actorResponse match {
+				case resp:SchemaValidationSuccess => complete(resp)
+				case resp:SchemaValidationFailure => complete(resp)
+				case resp:SchemaNotFound=> complete(NotFound)
+			  }
+				case Failure(_) => complete(InternalServerError)
+			}
+		  }
+		}
       }
     } ~ 
   pathPrefix("schema") {

@@ -1,5 +1,7 @@
 package model
 
+import scala.collection.JavaConverters._
+
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
@@ -19,7 +21,8 @@ object SchemaHandler {
   case class Validate(id: String, json: JsValue)
   case class Upload(id: String, schema: JsValue)
   case class Get(id: String)
-  case class SchemaValidated(action: String, id: String, status: String)
+  case class SchemaValidationSuccess(action: String, id: String, status: String)
+  case class SchemaValidationFailure(action: String, id: String, status: String, message: String)
   case class SchemaUploaded(action: String, id: String, status: String)
   case class SchemaNotUploaded(action: String, id: String, status: String, message: String)
   case class SchemaNotFound(id: String)
@@ -43,13 +46,16 @@ class SchemaHandler() extends Actor with ActorLogging {
 		  // TODO: Remove null attributes
 		  val jsonNode: JsonNode = objectMapper.readTree(json.toString)
 
-		  if(schema.validate(jsonNode).isSuccess()) {
-			_sender ! SchemaValidated("validateDocument", id, "success")
+		  val report = schema.validate(jsonNode)
+		  if(report.isSuccess()) {
+			_sender ! SchemaValidationSuccess("validateDocument", id, "success")
 		  } else {
-			// TODO: Implement the message attribute
-			_sender ! SchemaValidated("validateDocument", id, "error")
+			val messages = report.asScala.map {
+			  case msg => msg.toString
+			}.mkString("")
+			_sender ! SchemaValidationFailure("validateDocument", id, "error", messages)
 		  }
-		case resp:SchemaNotFound => _sender ! SchemaValidated("validateDocument", id, "fail")
+		case resp:SchemaNotFound => _sender ! SchemaNotFound(id)
       }
 
     case Upload(id, schema) =>
