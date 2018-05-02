@@ -32,17 +32,6 @@ class SchemaHandler() extends Actor with ActorLogging {
   import SchemaHandler._
   implicit val ec = context.dispatcher
 
-  def removeNullNodes(tree: JsonNode): JsonNode = {
-	tree.asScala.map {
-	  case node =>
-		if (node.isObject || node.isArray) {
-		  removeNullNodes(node)
-		} else if (node.isNull) {
-		  tree.asInstanceOf[ObjectNode].remove(node)
-		}
-	}
-  }
-
   override def receive: Receive = {
     // closing over the sender in Future is not safe
     // I am keeping those references just in case for now
@@ -55,17 +44,22 @@ class SchemaHandler() extends Actor with ActorLogging {
 		  val objectMapper = new ObjectMapper
 		  val factory: JsonSchemaFactory = JsonSchemaFactory.byDefault()
 		  val schema: JsonSchema = factory.getJsonSchema(objectMapper.readTree(resp.toString))
-		  // TODO: Remove null attributes
-		  val jsonNode: JsonNode = removeNullNodes(objectMapper.readTree(json.toString))
-		  removeNullNodes(jsonNode)
+		  val jsonNode: JsonNode = objectMapper.readTree(json.toString)
 
 		  val report = schema.validate(jsonNode)
-		  if(report.isSuccess()) {
+		  val messages = report.asScala.filter {
+			case msg => ! msg.toString.contains("found: \"null\"")
+		  }.map {
+			case msg => msg.toString
+		  }.mkString("")
+		  // FIXME: Use a decent way of filtering nulls out
+		  // the way it is implemented is error prone.
+		  // It's temporarily here as a _make it work_ solution
+		  // Note that report.isSuccess() is an option, we would then
+		  // need to filter out the nulls before validating
+		  if(messages.length == 0) {
 			_sender ! SchemaValidationSuccess("validateDocument", id, "success")
 		  } else {
-			val messages = report.asScala.map {
-			  case msg => msg.toString
-			}.mkString("")
 			_sender ! SchemaValidationFailure("validateDocument", id, "error", messages)
 		  }
 		case resp:SchemaNotFound => _sender ! SchemaNotFound(id)
